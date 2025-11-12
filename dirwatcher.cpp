@@ -110,7 +110,7 @@ void DirWatcher::StartWatching(){
             return;
         }
 
-        QMap<int, QString> watchMap;  // maps watch-descriptor → directory path
+        QMap<int, QString> watch_map;  // maps watch-descriptor → directory path
 
         // --- Helper function to add watch (recursive if enabled) ---
         std::function<void(const QString&)> addWatchRecursive =
@@ -126,9 +126,9 @@ void DirWatcher::StartWatching(){
                 return;
             }
 
-            watchMap.insert(wd, path);
+            watch_map.insert(wd, path);
 
-            // ✅ Only recurse when recursive mode is enabled
+            // Only recurse when recursive mode is enabled
             if (!is_recursive_)
                 return;
 
@@ -144,7 +144,7 @@ void DirWatcher::StartWatching(){
         addWatchRecursive(dir_path_);
 
         char buffer[BUFFER_LEN];
-        QString renameOldPath;
+        QString rename_old_path;
 
         while (true) {
             int length = read(fd, buffer, BUFFER_LEN);
@@ -154,37 +154,37 @@ void DirWatcher::StartWatching(){
             int i = 0;
             while (i < length) {
                 auto* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
-                QString parentDir = watchMap[event->wd];
-                QString fullPath = parentDir + "/" + QString::fromUtf8(event->name);
+                QString parent_dir = watch_map[event->wd];
+                QString full_path = parent_dir + "/" + QString::fromUtf8(event->name);
 
                 // Convert to QFileInfo once (for file/folder check)
-                QFileInfo fi(fullPath);
+                QFileInfo fi(full_path);
 
                 if (event->mask & IN_CREATE) {
-                    HandleEntryChange(EventType::ADDED, fullPath);
+                    HandleEntryChange(EventType::ADDED, full_path);
 
-                    // ✅ If recursive, add watcher when new dir appears
+                    // If recursive, add watcher when new dir appears
                     if (is_recursive_ && (event->mask & IN_ISDIR)) {
-                        addWatchRecursive(fullPath);
+                        addWatchRecursive(full_path);
                     }
                 }
 
                 if (event->mask & IN_MODIFY) {
-                    HandleEntryChange(EventType::MODIFIED, fullPath);
+                    HandleEntryChange(EventType::MODIFIED, full_path);
                 }
 
                 if (event->mask & IN_DELETE) {
-                    HandleEntryChange(EventType::REMOVED, fullPath);
+                    HandleEntryChange(EventType::REMOVED, full_path);
                 }
 
                 if (event->mask & IN_MOVED_FROM) {
-                    renameOldPath = fullPath;
+                    rename_old_path = full_path;
                 }
 
                 if (event->mask & IN_MOVED_TO) {
-                    if (!renameOldPath.isEmpty()) {
-                        HandleEntryRename(renameOldPath, fullPath);
-                        renameOldPath.clear();
+                    if (!rename_old_path.isEmpty()) {
+                        HandleEntryRename(rename_old_path, full_path);
+                        rename_old_path.clear();
                     }
                 }
 
